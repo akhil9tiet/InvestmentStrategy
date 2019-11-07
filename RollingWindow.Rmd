@@ -1,0 +1,53 @@
+---
+title: "Rolling Window Regression"
+author: "Asmita Kumar"
+date: "12/7/2017"
+output: word_document
+---
+
+
+```{r rolling,echo=TRUE}
+library(quantmod)
+library(zoo)
+library(PortfolioAnalytics)
+data.UNH <- getSymbols("UNH", from = "2014-12-31", to = "2016-12-31", auto.assign =FALSE)
+data.VISA <- getSymbols("V", from = "2014-12-31", to = "2016-12-31", auto.assign =FALSE)
+ret.UNH <- Return.calculate(data.UNH$UNH.Adjusted)
+ret.VISA <- Return.calculate(data.VISA$V.Adjusted)
+ret.UNH <- ret.UNH[-1]
+ret.VISA <- ret.VISA[-1]
+head(ret.UNH)
+head(ret.VISA)
+
+portfolio <- cbind(ret.UNH, ret.VISA)
+portfolio.ret <- Return.portfolio(portfolio, weights = c(.5, .5), rebalance_on = "months" )
+
+
+data.GSPC <- getSymbols("^GSPC", from = "2014-12-31", to = "2016-12-31", auto.assign= FALSE)
+mkt.ret <- Return.calculate(data.GSPC$GSPC.Adjusted)
+mkt.ret <- mkt.ret[-1,]
+head(mkt.ret)
+
+rets <- cbind(portfolio.ret,mkt.ret)
+names(rets) <- c("Portfolio", "GSPC")
+head(rets)
+
+
+RegFun <- function(X) {
+  roll.reg <- lm(Portfolio~GSPC, data=as.data.frame(X))
+  return(roll.reg$coef)
+}
+coeffs <- rollapply(rets, width = 252, FUN = RegFun, by.column = FALSE)
+coeffs<-na.omit(coeffs)
+coeffs <- coeffs[-1, ]
+names(coeffs)<-c("Alpha","Beta")
+head(coeffs)
+options(digits=3)
+head(coeffs)
+
+
+plot(x=index(coeffs),xlab="Date",y=coeffs$Alpha,ylab="alpha",type="l")
+plot(x=index(coeffs),xlab="Date",y=coeffs$Beta,ylab="beta",type="l")
+title(main="Portfolio- Alpha and Beta Using Rolling 252-Day Windows and Daily Returns From 2014 to 2016",outer=TRUE)
+
+```

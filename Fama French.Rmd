@@ -1,0 +1,49 @@
+---
+title: "Fama French"
+author: "Asmita Kumar"
+date: "12/7/2017"
+output: word_document
+---
+
+
+```{r Fama French,echo=TRUE}
+port <- read.csv("Hypothetical_Portfolio(Monthly).csv")
+port$date<-as.yearmon(as.character(port$date),"%b %Y")
+head(port)
+FF.raw<-read.csv(file="F-F_Research_Data_Factors.csv")
+head(FF.raw)
+tail(FF.raw)
+
+FF.raw$date <- seq(as.Date("1926-07-01"), as.Date("2017-08-31"),by="months")
+FF.data<-subset(FF.raw, FF.raw$date>="2014-12-31" & FF.raw$date<="2016-12-31")
+names(FF.data) <- c("date", "exmkt", "SMB", "HML", "rf")
+FF.data$date <- as.yearmon(FF.data$date,"%Y-%m-%d")
+head(FF.data)
+
+## Step 3: Combine FF.data with hypotheitcal portfolio
+FF.data<-cbind(FF.data,data.frame(port))
+FF.data$exmkt <- FF.data$exmkt/100
+FF.data$SMB <- FF.data$SMB/100
+FF.data$HML <- FF.data$HML/100
+FF.data$rf <- FF.data$rf/100
+head(FF.data)
+
+##Step 4: create excess portfolio return
+FF.data$exret <- FF.data$port.ret-FF.data$rf
+head(FF.data)
+
+##Step 5: Run Regression Using Fama-French Factors
+FF.reg<-lm(exret~exmkt+SMB+HML,data=FF.data)
+summary(FF.reg)
+
+##Step 6: compare with CAPM model
+CAPM<-lm(exret~exmkt, data = FF.data)
+betas<-rbind( cbind(summary(FF.reg)$coefficient[2], summary(FF.reg)$coefficient[14],
+summary(FF.reg)$adj.r.squared),
+cbind(summary(CAPM)$coefficient[2], summary(CAPM)$coefficient[8],
+summary(CAPM)$adj.r.squared))
+colnames(betas)<-paste(c("Beta","p-Value","Adj. R-Squared"))
+rownames(betas)<-paste(c("Fama-French","CAPM"))
+betas
+
+```
